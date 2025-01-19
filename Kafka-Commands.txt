@@ -1,0 +1,203 @@
+Start zookeeper
+-> zookeeper-server-start.bat ../../config/zookeeper.properties
+
+Start Kafka
+-> kafka-server-start.bat ../../config/server.properties
+
+Create topic without topic
+-> kafka-topics.bat --create --topic topic-example --bootstrap-server localhost:9092
+
+Create topic
+-> kafka-topics.bat --bootstrap-server localhost:9092 --create --topic myTopic --partitions 1 --replication-factor 1
+
+Create topic with multiple partitions
+-> kafka-topics.bat --bootstrap-server localhost:9092 --create --topic myTopic --partitions 3 --replication-factor 1
+
+
+Delete all topic
+-> Kafka-topics.bat localhost:9092 --delete --topic myTopic
+
+-> Kafka-topics.bat --bootstrap-server localhost:9092 --delete --topic 'banking.*'
+
+
+List Kafka Topics
+-> kafka-topics.bat --bootstrap-server localhost:9092 --list
+
+Describe Kafka Topics
+-> kafka-topics.bat --bootstrap-server localhost:9092 --topic myTopic --describe
+
+To list Kafka topic
+-> kafka-topics.bat --bootstrap-server localhost:9092 --describe --topic myTopic
+
+To create producer
+-> kafka-console-producer.bat --bootstrap-server localhost:9092 --topic myTopic
+
+To create consumer
+-> kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic myTopic --from-beginning
+
+To create consumer and getting all message from beginner
+-> kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic myTopic --from-beginning
+
+To create consumer and getting messages not from beginner
+-> kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic myTopic
+
+To create consumer with defined group name
+-> kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic myTopic --group myConsumerGroup
+
+To list all consumer groups
+-> kafka-consumer-groups.bat --bootstrap-server localhost:9092 --list
+
+To check properties of particular group
+-> kafka-consumer-groups.bat --bootstrap-server localhost:9092 --describe --group console-consumer-59017
+*************** Kafka Connect ***************************
+-- To check weather connector installed or not
+http://localhost:8083/connector-plugins
+-- To check status of connector or any exception
+http://localhost:8083/connectors/<connector-name>/status
+-- To check list of connectors
+http://localhost:8083/connectors
+-- To check list of task associated with connectors
+http://localhost:8083/connectors/<connector-name>/tasks
+-- To delete connector with DELETE method
+DELETE http://localhost:8083/connectors/<connector-name>
+
+connect-standalone.bat ../../config/connect-standalone.properties ../../config/connect-file-source.properties ../../config/connect-file-sink.properties
+
+connect-distributed.bat ../../config/connect-distributed.properties
+
+connect-distributed.bat ../../config/connect-distributed.properties ../../config/connect-file-sink.properties
+192.168.181.210:8083
+----- Pull data from db table to topic ------------
+{
+  "name": "banking-pull-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "database.hostname": "localhost",
+    "database.port": "3306",
+    "database.user": "kafkaconnect",
+    "database.password": "adil1234",
+    "database.server.id": "1",
+    "topic.prefix": "banking",
+    "database.include.list": "spring_batch",
+    "schema.history.internal.kafka.bootstrap.servers": "localhost:9092",
+    "schema.history.internal.kafka.topic": "spring_batch.banking"
+	"mode":"bulk",
+                "poll.interval.ms" : 3600000
+  }
+}
+----- Pull data from db table to topic ------------
+{
+  "name": "sample-pull-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "tasks.max": "1",
+    "connection.url": "jdbc:mysql://localhost:3306/spring_batch",
+    "connection.user": "kafkaconnect",
+    "connection.password": "adil1234",
+    "table.whitelist": "kaf_sample",
+    "mode": "incrementing",
+    "incrementing.column.name": "id",
+    "topic.prefix": "db-",
+    "poll.interval.ms": "5000"
+  }
+}
+
+----- Sink data on db table from topic ------------
+{
+  "name": "banking-sink-connector",
+  "config":{
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "connection.url": "jdbc:mysql://mysql:3306/kafka_connect",
+    "topics": "banking",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "connection.user": "adil",
+    "connection.password": "adil1234",
+    "auto.create": true,
+    "auto.evolve": true,
+    "insert.mode": "insert",
+    "pk.mode": "id_key",
+    "pk.fields": "id"
+ }
+}
+----- Sink data on db table from topic ------------
+{
+  "name": "jdbc-sink-connectors",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "db-kaf_sample",
+    "connection.url": "jdbc:mysql://localhost:3306/kafka_connect",
+    "connection.user": "root",
+    "connection.password": "adil1234",
+    "table.name.format": "kafka_sample",
+    "auto.create": "true",
+    "auto.evolve": "true",
+    "insert.mode": "insert",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true",
+    "pk.mode": "none"
+  }
+}
+
+----- Sink data on file from topic -------------
+{
+  "name": "file-sink-connector",
+  "config": {
+    "connector.class": "org.apache.kafka.connect.file.FileStreamSinkConnector",
+    "tasks.max": "1",
+    "topics": "db-banking",
+    "file": "output.txt",
+    "value.converter": "org.apache.kafka.connect.storage.StringConverter"
+  }
+}
+---- Pull data from file to topic -------------
+{
+  "name": "file-source-connector",
+  "config": {
+    "connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+    "tasks.max": "1",
+    "file": "/path/to/input/file.txt",
+    "topic": "my_topic"
+  }
+}
+----
+References:
+https://www.confluent.io/blog/kafka-connect-deep-dive-jdbc-source-connector/
+*************** Kafka Connect *******************************
+=====================================================================================
+To create producer for publish message with keys
+-> kafka-console-producer.bat --bootstrap-server localhost:9092 --property "parse.key=true" --property "key.separator=:" --topic myTopic 
+
+Consume a message using consumer group
+-> kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic myTopic --group test-consumer-group --property "print.key=false" --property "key.separator=:" --from-beginning
+
+Consume a message using consumer group
+-> kafka-consumer-groups.bat --bootstrap-server localhost:9092 --describe --all-groups
+==========================================================
+🟢 INSTALLATION COMMANDS
+
+zookeeper-server-start.bat ..\..\config\zookeeper.properties
+
+kafka-server-start.bat ..\..\config\server.properties
+
+kafka-topics.bat --create --topic my-topic --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3
+
+kafka-console-producer.bat --broker-list localhost:9092 --topic my-topic
+
+kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic my-topic --from-beginning
+
+🟢 SENDING MESSAGES COMMANDS
+
+zookeeper-server-start.bat ..\..\config\zookeeper.properties
+
+kafka-server-start.bat ..\..\config\server.properties
+
+kafka-topics.bat --create --topic foods --bootstrap-server localhost:9092 --replication-factor 1 --partitions 4
+
+kafka-console-producer.bat --broker-list localhost:9092 --topic foods --property "key.separator=-" --property "parse.key=true"
+
+kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic foods --from-beginning -property "key.separator=-" --property "print.key=false"
